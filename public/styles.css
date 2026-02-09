@@ -176,7 +176,6 @@ button.btn-red{background:#e55353;color:#0b0f14;}
 /* Toast notifications container and elements */
 .toast-container {
   position: fixed;
-  /* Raise notifications a bit higher than the bottom edge */
   bottom: 96px;
   left: 50%;
   transform: translateX(-50%);
