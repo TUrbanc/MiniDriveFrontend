@@ -43,7 +43,6 @@ function showToast(message, type = 'ok', timeout = 3500) {
   // remove after timeout
   setTimeout(() => {
     toast.classList.remove('show');
-    // remove from DOM after transition
     setTimeout(() => {
       toast.remove();
       if (!container.children.length) {
@@ -58,7 +57,6 @@ function confirmModal(message) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    // centre by default
     const modal = document.createElement('div');
     modal.className = 'modal';
     const p = document.createElement('p');
@@ -94,7 +92,6 @@ function openShareModal(file) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    // Keep modals centered (CSS already centers modal-overlay)
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.width = '100%';
@@ -111,7 +108,7 @@ function openShareModal(file) {
     labelUser.textContent = 'Uporabniško ime prejemnika';
     const inputUser = document.createElement('input');
     inputUser.type = 'text';
-    inputUser.placeholder = 'npr. janko';
+    inputUser.placeholder = 'npr. janez';
     field1.appendChild(labelUser);
     field1.appendChild(inputUser);
     modal.appendChild(field1);
@@ -176,7 +173,6 @@ function openLinkShareModal(file) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    // Keep modals centered (CSS already centers modal-overlay)
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.width = '100%';
@@ -247,8 +243,7 @@ function openLinkShareModal(file) {
   });
 }
 
-// Shows a modal containing a generated transfer link and provides an
-// explicit "Kopiraj" button. (No auto-copy.)
+// Shows a modal containing a generated transfer link and provides copy button.
 function openCopyLinkModal(url) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -316,7 +311,6 @@ function openCommentsModal(file) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    // Keep modals centered (CSS already centers modal-overlay)
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.width = '100%';
@@ -466,7 +460,7 @@ async function copyText(txt) {
   } catch (_) {
     // ignore
   }
-  showToast('Kopiranje ni uspelo. Označil sem povezavo — kopiraj ročno (Ctrl+C).', 'error', 5000);
+  showToast('Kopiranje ni uspelo. Kopiraj ročno (Ctrl+C).', 'error', 5000);
   return false;
 }
 
@@ -474,7 +468,6 @@ function renderCommentsUI(fileId) {
   const box = document.createElement('div');
   box.className = 'comments';
 
-  // Input area: textarea above, send button below (aligned right)
   const inputWrapper = document.createElement('div');
   inputWrapper.style.display = 'flex';
   inputWrapper.style.flexDirection = 'column';
@@ -545,7 +538,7 @@ function renderActionsForOwned(file) {
   const wrap = document.createElement('div');
   wrap.className = 'actions-owned';
 
-  // Share to user (green)
+  // Share to user
   const btnShare  = createIconButton('share', 'Daj v skupno rabo');
   btnShare.onclick = async () => {
     try {
@@ -559,7 +552,7 @@ function renderActionsForOwned(file) {
   };
   wrap.appendChild(btnShare);
 
-  // Create link share (green)
+  // Create link share
   const btnLink   = createIconButton('link-share', 'Link za prenos');
   btnLink.onclick = async () => {
     try {
@@ -579,10 +572,10 @@ function renderActionsForOwned(file) {
   };
   wrap.appendChild(btnLink);
 
-  // Delete file (red)
+  // Delete file
   const btnDelete = createIconButton('delete', 'Izbriši');
   btnDelete.onclick = async () => {
-    const ok = await confirmModal('Res želiš izbrisati to datoteko?');
+    const ok = await confirmModal('Ali res želiš izbrisati to datoteko?');
     if (!ok) return;
     try {
       await authDelete(`/files/${file.id ?? file.file_id}`);
