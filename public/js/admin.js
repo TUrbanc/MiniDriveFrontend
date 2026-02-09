@@ -123,6 +123,66 @@ function askPasswordModal(titleText) {
   });
 }
 
+// Toast notification helper for admin panel. Duplicated from drive.js.
+function showToast(message, type = 'ok', timeout = 3500) {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      toast.remove();
+      if (!container.children.length) container.remove();
+    }, 300);
+  }, timeout);
+}
+
+// Confirmation modal helper for admin panel.
+function confirmModal(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    const p = document.createElement('p');
+    p.textContent = message;
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.style.marginTop = '12px';
+    const btnCancel = document.createElement('button');
+    btnCancel.className = 'secondary';
+    btnCancel.textContent = 'Prekliči';
+    const btnOk = document.createElement('button');
+    btnOk.textContent = 'Da';
+    function cleanup(result) {
+      overlay.remove();
+      resolve(result);
+    }
+    btnCancel.onclick = () => cleanup(false);
+    btnOk.onclick = () => cleanup(true);
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup(false);
+    };
+    actions.appendChild(btnCancel);
+    actions.appendChild(btnOk);
+    modal.appendChild(p);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  });
+}
+
 
 // Users list rendering per-user row: "Spremeni geslo" -> opens modal -> calls /admin/users/password ; "Izbriši" -> calls /admin/users/delete
 
@@ -158,15 +218,15 @@ async function loadUsers() {
       changePw.onclick = async () => {
         try {
           const secret = document.getElementById('secret').value;
-          if (!secret) return alert('Najprej vnesi skrivni ključ.');
+          if (!secret) { showToast('Najprej vnesi skrivni ključ.', 'error'); return; }
 
           const newPassword = await askPasswordModal(`Spremeni geslo za: ${u.username}`);
           if (!newPassword) return;
 
           await postJson('/admin/users/password', { secret, userId: u.id, newPassword });
-          alert('Geslo uspešno spremenjeno.');
+          showToast('Geslo uspešno spremenjeno.', 'ok');
         } catch (err) {
-          alert(err.message || 'Napaka.');
+          showToast(err.message || 'Napaka.', 'error');
         }
       };
 
@@ -175,12 +235,14 @@ async function loadUsers() {
       del.textContent = 'Izbriši';
       del.onclick = async () => {
         try {
-          if (!confirm(`Izbrisati uporabnika ${u.username}?`)) return;
+          const ok = await confirmModal(`Izbrisati uporabnika ${u.username}?`);
+          if (!ok) return;
           const secret = document.getElementById('secret').value;
           await postJson('/admin/users/delete', { secret, userId: u.id });
           loadUsers();
+          showToast('Uporabnik izbrisan.', 'ok');
         } catch (err) {
-          alert(err.message || 'Napaka.');
+          showToast(err.message || 'Napaka.', 'error');
         }
       };
 

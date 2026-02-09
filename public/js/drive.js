@@ -21,6 +21,393 @@ function createIconButton(iconName, label, extraClasses = []) {
   return btn;
 }
 
+// Toast notification helper. Shows a small message at the bottom of the page.
+// Type can be 'ok' or 'error' (default 'ok') which controls accent color.
+function showToast(message, type = 'ok', timeout = 3500) {
+  // ensure container exists
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  // allow CSS transition
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+  // remove after timeout
+  setTimeout(() => {
+    toast.classList.remove('show');
+    // remove from DOM after transition
+    setTimeout(() => {
+      toast.remove();
+      if (!container.children.length) {
+        container.remove();
+      }
+    }, 300);
+  }, timeout);
+}
+
+// Modal helper for confirmations (yes/no).
+function confirmModal(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    // centre by default
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    const p = document.createElement('p');
+    p.textContent = message;
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.style.marginTop = '12px';
+    const btnCancel = document.createElement('button');
+    btnCancel.className = 'secondary';
+    btnCancel.textContent = 'Prekliči';
+    const btnOk = document.createElement('button');
+    btnOk.textContent = 'Da';
+    function cleanup(result) {
+      overlay.remove();
+      resolve(result);
+    }
+    btnCancel.onclick = () => cleanup(false);
+    btnOk.onclick = () => cleanup(true);
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup(false);
+    };
+    actions.appendChild(btnCancel);
+    actions.appendChild(btnOk);
+    modal.appendChild(p);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  });
+}
+
+// Modal helper for sharing to a user. Returns { username, canDownload } or null.
+function openShareModal(file) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    // Keep modals centered (CSS already centers modal-overlay)
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.width = '100%';
+    modal.style.maxWidth = '520px';
+    modal.style.maxHeight = '90vh';
+    modal.style.overflowY = 'auto';
+
+    const title = document.createElement('h3');
+    title.textContent = `Skupna raba – ${file.original_name}`;
+    modal.appendChild(title);
+
+    const field1 = document.createElement('div');
+    const labelUser = document.createElement('label');
+    labelUser.textContent = 'Uporabniško ime prejemnika';
+    const inputUser = document.createElement('input');
+    inputUser.type = 'text';
+    inputUser.placeholder = 'npr. janko';
+    field1.appendChild(labelUser);
+    field1.appendChild(inputUser);
+    modal.appendChild(field1);
+
+    const field2 = document.createElement('div');
+    field2.style.marginTop = '8px';
+    const labelCanDl = document.createElement('label');
+    // Put checkbox + text on one line, aligned left
+    labelCanDl.style.display = 'flex';
+    labelCanDl.style.alignItems = 'center';
+    labelCanDl.style.justifyContent = 'flex-start';
+    labelCanDl.style.gap = '8px';
+    labelCanDl.style.margin = '0';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = true;
+    const span = document.createElement('span');
+    span.textContent = 'Prejemnik lahko prenese';
+    labelCanDl.appendChild(checkbox);
+    labelCanDl.appendChild(span);
+    field2.appendChild(labelCanDl);
+    modal.appendChild(field2);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.style.marginTop = '12px';
+
+    const btnCancel = document.createElement('button');
+    btnCancel.className = 'secondary';
+    btnCancel.textContent = 'Prekliči';
+    const btnOk = document.createElement('button');
+    btnOk.textContent = 'Deli';
+
+    function cleanup(val) {
+      overlay.remove();
+      resolve(val);
+    }
+    btnCancel.onclick = () => cleanup(null);
+    btnOk.onclick = () => {
+      const username = (inputUser.value || '').trim();
+      if (!username) {
+        showToast('Vnesi uporabniško ime prejemnika.', 'error');
+        return;
+      }
+      cleanup({ username, canDownload: checkbox.checked });
+    };
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup(null);
+    };
+    actions.appendChild(btnCancel);
+    actions.appendChild(btnOk);
+
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    inputUser.focus();
+  });
+}
+
+// Modal helper for creating a link share. Returns { days, maxDownloads } or null.
+function openLinkShareModal(file) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    // Keep modals centered (CSS already centers modal-overlay)
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.width = '100%';
+    modal.style.maxWidth = '520px';
+    modal.style.maxHeight = '90vh';
+    modal.style.overflowY = 'auto';
+
+    const title = document.createElement('h3');
+    title.textContent = `Link za prenos – ${file.original_name}`;
+    modal.appendChild(title);
+
+    const f1 = document.createElement('div');
+    const l1 = document.createElement('label');
+    l1.textContent = 'Veljavnost (dni)';
+    const i1 = document.createElement('input');
+    i1.type = 'number';
+    i1.placeholder = 'prazno = brez';
+    f1.appendChild(l1);
+    f1.appendChild(i1);
+    modal.appendChild(f1);
+
+    const f2 = document.createElement('div');
+    f2.style.marginTop = '8px';
+    const l2 = document.createElement('label');
+    l2.textContent = 'Največje število prenosov';
+    const i2 = document.createElement('input');
+    i2.type = 'number';
+    i2.placeholder = 'prazno = brez';
+    f2.appendChild(l2);
+    f2.appendChild(i2);
+    modal.appendChild(f2);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.style.marginTop = '12px';
+    const btnCancel = document.createElement('button');
+    btnCancel.className = 'secondary';
+    btnCancel.textContent = 'Prekliči';
+    const btnOk = document.createElement('button');
+    btnOk.textContent = 'Ustvari link';
+    function cleanup(val) {
+      overlay.remove();
+      resolve(val);
+    }
+    btnCancel.onclick = () => cleanup(null);
+    btnOk.onclick = () => {
+      const daysVal = i1.value ? Number(i1.value) : null;
+      const maxdVal = i2.value ? Number(i2.value) : null;
+      if (i1.value && isNaN(daysVal)) {
+        showToast('Neveljavna številka dni.', 'error');
+        return;
+      }
+      if (i2.value && isNaN(maxdVal)) {
+        showToast('Neveljavno največje število prenosov.', 'error');
+        return;
+      }
+      cleanup({ days: daysVal, maxDownloads: maxdVal });
+    };
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup(null);
+    };
+    actions.appendChild(btnCancel);
+    actions.appendChild(btnOk);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    i1.focus();
+  });
+}
+
+// Shows a modal containing a generated transfer link and provides an
+// explicit "Kopiraj" button. (No auto-copy.)
+function openCopyLinkModal(url) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.alignItems = 'center';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.width = '100%';
+    modal.style.maxWidth = '520px';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Povezava za prenos';
+    modal.appendChild(title);
+
+    const linkInput = document.createElement('input');
+    linkInput.type = 'text';
+    linkInput.value = url;
+    linkInput.readOnly = true;
+    linkInput.onclick = () => {
+      linkInput.focus();
+      linkInput.select();
+    };
+    modal.appendChild(linkInput);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.style.marginTop = '12px';
+
+    const btnClose = document.createElement('button');
+    btnClose.className = 'secondary';
+    btnClose.textContent = 'Zapri';
+    const btnCopy = document.createElement('button');
+    btnCopy.textContent = 'Kopiraj';
+
+    const cleanup = () => {
+      overlay.remove();
+      resolve();
+    };
+    btnClose.onclick = cleanup;
+    btnCopy.onclick = async () => {
+      // Select and then attempt copy
+      linkInput.focus();
+      linkInput.select();
+      await copyText(url);
+    };
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup();
+    };
+
+    actions.appendChild(btnClose);
+    actions.appendChild(btnCopy);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Preselect for easier manual copy
+    linkInput.focus();
+    linkInput.select();
+  });
+}
+
+// Modal helper for viewing and adding comments.
+function openCommentsModal(file) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    // Keep modals centered (CSS already centers modal-overlay)
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.width = '100%';
+    modal.style.maxWidth = '520px';
+    modal.style.maxHeight = '90vh';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    modal.style.overflow = 'hidden';
+
+    const title = document.createElement('h3');
+    title.textContent = `Komentarji – ${file.original_name}`;
+    modal.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'comments-list';
+    list.style.flex = '1';
+    list.style.overflowY = 'auto';
+    list.textContent = 'Nalagam komentarje...';
+    modal.appendChild(list);
+
+    const inputWrapper = document.createElement('div');
+    inputWrapper.style.marginTop = '12px';
+    inputWrapper.style.display = 'flex';
+    inputWrapper.style.flexDirection = 'column';
+    inputWrapper.style.gap = '8px';
+    const ta = document.createElement('textarea');
+    ta.rows = 3;
+    ta.placeholder = 'Napiši komentar...';
+    ta.style.resize = 'vertical';
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'actions';
+    actionsRow.style.marginTop = '8px';
+    const btnClose = document.createElement('button');
+    btnClose.className = 'secondary';
+    btnClose.textContent = 'Zapri';
+    btnClose.style.width = 'auto';
+    const btnSend = document.createElement('button');
+    btnSend.textContent = 'Pošlji';
+    btnSend.style.width = 'auto';
+    actionsRow.appendChild(btnClose);
+    actionsRow.appendChild(btnSend);
+    inputWrapper.appendChild(ta);
+    inputWrapper.appendChild(actionsRow);
+    modal.appendChild(inputWrapper);
+
+    async function refreshComments() {
+      try {
+        const data = await listComments(file.id);
+        list.textContent = '';
+        if (!data.comments || !data.comments.length) {
+          list.textContent = 'Ni komentarjev.';
+        } else {
+          data.comments.forEach(c => {
+            const li = document.createElement('div');
+            li.textContent = `${new Date(c.created_at).toLocaleString()} — ${c.author || 'uporabnik'}: ${c.body}`;
+            list.appendChild(li);
+          });
+        }
+      } catch (e) {
+        list.textContent = e.message || 'Napaka nalaganja komentarjev.';
+      }
+    }
+    btnSend.onclick = async () => {
+      const val = ta.value.trim();
+      if (!val) return;
+      try {
+        await addComment(file.id, val);
+        ta.value = '';
+        await refreshComments();
+        showToast('Komentar dodan.', 'ok');
+      } catch (e) {
+        showToast(e.message || 'Napaka pri dodajanju komentarja.', 'error');
+      }
+    };
+
+    btnClose.onclick = () => cleanup();
+
+    function cleanup() {
+      overlay.remove();
+      resolve();
+    }
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup();
+    };
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    refreshComments();
+    ta.focus();
+  });
+}
+
 
 // downloads files by calling the backend and forcing browser download
 
@@ -43,17 +430,44 @@ async function downloadFile(fileId, filename) {
     a.remove();
     URL.revokeObjectURL(url);
   } catch (e) {
-    alert(e.message || 'Prenos ni uspel.');
+    showToast(e.message || 'Prenos ni uspel.', 'error');
   }
 }
 
 async function copyText(txt) {
+  // 1) Try modern clipboard API (works on secure contexts)
   try {
-    await navigator.clipboard.writeText(txt);
-    alert('Kopirano v odložišče.');
-  } catch {
-    prompt('Kopiraj URL:', txt);
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(txt);
+      showToast('Kopirano v odložišče.', 'ok');
+      return true;
+    }
+  } catch (_) {
+    // fall through to legacy fallback
   }
+
+  // 2) Legacy fallback (works on many http pages)
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (ok) {
+      showToast('Kopirano v odložišče.', 'ok');
+      return true;
+    }
+  } catch (_) {
+    // ignore
+  }
+  showToast('Kopiranje ni uspelo. Označil sem povezavo — kopiraj ročno (Ctrl+C).', 'error', 5000);
+  return false;
 }
 
 function renderCommentsUI(fileId) {
@@ -117,7 +531,7 @@ function renderCommentsUI(fileId) {
       ta.value = '';
       await refreshComments();
     } catch (e) {
-      alert(e.message || 'Napaka pri dodajanju komentarja.');
+      showToast(e.message || 'Napaka pri dodajanju komentarja.', 'error');
     }
   };
 
@@ -134,13 +548,13 @@ function renderActionsForOwned(file) {
   // Share to user (green)
   const btnShare  = createIconButton('share', 'Daj v skupno rabo');
   btnShare.onclick = async () => {
-    const user = prompt('Uporabniško ime prejemnika:');
-    if (!user) return;
     try {
-      await shareFileToUser(file.id, user, true);
-      alert('Skupna raba dodana.');
+      const res = await openShareModal(file);
+      if (!res) return;
+      await shareFileToUser((file.id ?? file.file_id), res.username, res.canDownload);
+      showToast('Skupna raba je dodana.', 'ok');
     } catch (e) {
-      alert(e.message || 'Napaka pri skupni rabi.');
+      showToast(e.message || 'Napaka pri skupni rabi.', 'error');
     }
   };
   wrap.appendChild(btnShare);
@@ -149,16 +563,18 @@ function renderActionsForOwned(file) {
   const btnLink   = createIconButton('link-share', 'Link za prenos');
   btnLink.onclick = async () => {
     try {
-      const days = prompt('Veljavnost (dni) – prazno = brez omejitve:');
-      const maxd = prompt('Največje št. prenosov – prazno = brez omejitve:');
+      const res = await openLinkShareModal(file);
+      if (!res) return;
+      const { days, maxDownloads } = res;
       const { url } = await createLinkShare(
-        file.id,
-        days ? Number(days) : null,
-        maxd ? Number(maxd) : null
+        (file.id ?? file.file_id),
+        days,
+        maxDownloads
       );
-      await copyText(url);
+      // Show the link in a modal; user can copy manually.
+      await openCopyLinkModal(url);
     } catch (e) {
-      alert(e.message || 'Napaka pri ustvarjanju linka.');
+      showToast(e.message || 'Napaka pri ustvarjanju linka.', 'error');
     }
   };
   wrap.appendChild(btnLink);
@@ -166,13 +582,14 @@ function renderActionsForOwned(file) {
   // Delete file (red)
   const btnDelete = createIconButton('delete', 'Izbriši');
   btnDelete.onclick = async () => {
-    const ok = confirm('Res želiš izbrisati to datoteko?');
+    const ok = await confirmModal('Res želiš izbrisati to datoteko?');
     if (!ok) return;
     try {
-      await authDelete(`/files/${file.id}`);
+      await authDelete(`/files/${file.id ?? file.file_id}`);
       await loadFiles();
+      showToast('Datoteka izbrisana.', 'ok');
     } catch (e) {
-      alert(e.message || 'Napaka pri brisanju datoteke.');
+      showToast(e.message || 'Napaka pri brisanju datoteke.', 'error');
     }
   };
   wrap.appendChild(btnDelete);
@@ -228,20 +645,10 @@ function renderRow(file, isShared = false) {
   btnDl.onclick = () => downloadFile(fileId, file.original_name);
   right.appendChild(btnDl);
 
-  // Comments toggle
+  // Comments modal
   const btnC = createIconButton('comment', 'Komentarji');
-  let commentsOpen = false;
-  let commentsBox = null;
   btnC.onclick = () => {
-    if (!commentsOpen) {
-      commentsBox = renderCommentsUI(fileId);
-      row.appendChild(commentsBox);
-      commentsOpen = true;
-    } else if (commentsBox) {
-      row.removeChild(commentsBox);
-      commentsBox = null;
-      commentsOpen = false;
-    }
+    openCommentsModal({ id: fileId, original_name: file.original_name });
   };
   right.appendChild(btnC);
 
@@ -332,7 +739,7 @@ function initDrive() {
 
         fileInput.value = '';
         if (fileLabelSpan) {
-          fileLabelSpan.textContent = 'Izberite datoteko…';
+          fileLabelSpan.textContent = 'Naloži datoteko';
         }
         if (fakeWrapper) {
           fakeWrapper.classList.remove('has-file');
